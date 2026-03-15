@@ -267,9 +267,13 @@ export function createServer() {
         const to = uniqueAddresses(original.from);
 
         const additionalCc = toAddressList(cc);
+        // Filter out our own address from CC to avoid sending to ourselves
+        const selfAddress = (process.env.SMTP_FROM || process.env.IMAP_USER || '').toLowerCase();
+        const isNotSelf = (addr: string) => addr.toLowerCase() !== selfAddress;
+
         const ccRecipients = replyAll
-          ? uniqueAddresses([...original.to, ...original.cc, ...additionalCc].filter((entry) => !to.includes(entry)))
-          : additionalCc;
+          ? uniqueAddresses([...original.to, ...original.cc, ...additionalCc].filter((entry) => !to.includes(entry)).filter(isNotSelf))
+          : additionalCc.filter(isNotSelf);
 
         const subject = normalizeReplySubject(original.subject || '(no subject)');
         const references = mergeReferences(original.references, original.messageId);
