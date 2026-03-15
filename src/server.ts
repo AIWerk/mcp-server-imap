@@ -28,6 +28,7 @@ export const toolSchemas = {
     before: z.string().datetime().optional(),
     unread: z.boolean().optional(),
     folder: z.string().default('INBOX').optional(),
+    limit: z.number().int().min(1).max(200).default(50).optional(),
   }),
   email_folders: z.object({}),
   email_move: z.object({
@@ -119,8 +120,8 @@ export function createServer() {
     },
     async (args) => {
       try {
-        const { folder = 'INBOX', ...search } = args;
-        const messages = await imap.searchEmails(folder, search);
+        const { folder = 'INBOX', limit = 50, ...search } = args;
+        const messages = await imap.searchEmails(folder, search, limit);
         return toolSuccess(messages);
       } catch (error) {
         return toolError(error);

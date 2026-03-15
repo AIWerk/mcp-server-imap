@@ -87,10 +87,7 @@ type ImapFlowLike = {
   messageFlagsRemove: (uids: number[], flags: string[], options?: { uid?: boolean }) => Promise<boolean>;
 };
 
-export function parseBool(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-}
+import { parseBool } from './utils.js';
 
 export function readImapConfig(env: NodeJS.ProcessEnv = process.env): ImapConfig {
   const host = env.IMAP_HOST?.trim() ?? '';
@@ -288,11 +285,21 @@ export class ImapClient {
     const client = await this.ensureConnected();
     const lock = await client.getMailboxLock(folder);
     try {
-      const range = `*:${Math.max(1, limit)}`;
       const items: EmailListItem[] = [];
       const criteria = unreadOnly ? { seen: false } : { all: true };
 
-      for await (const msg of client.fetch(criteria, {
+      // Use IMAP SEARCH first to get UIDs, then fetch only the latest N
+      const uids = await client.search(criteria, { uid: true });
+      if (!uids || (Array.isArray(uids) && uids.length === 0)) {
+        return [];
+      }
+      const uidList = Array.isArray(uids) ? uids : [];
+      // Sort descending (newest first) and take only `limit` UIDs
+      const latestUids = uidList.sort((a, b) => b - a).slice(0, limit);
+
+      if (latestUids.length === 0) return [];
+
+      for await (const msg of client.fetch(latestUids, {
         envelope: true,
         flags: true,
         internalDate: true,
@@ -309,9 +316,7 @@ export class ImapClient {
         });
       }
 
-      return items
-        .sort((a, b) => b.uid - a.uid)
-        .slice(0, limit);
+      return items.sort((a, b) => b.uid - a.uid);
     } catch (error) {
       throw normalizeImapError(error, this.config);
     } finally {
@@ -354,15 +359,18 @@ export class ImapClient {
     }
   }
 
-  async searchEmails(folder = 'INBOX', params: EmailSearchParams = {}): Promise<EmailListItem[]> {
+  async searchEmails(folder = 'INBOX', params: EmailSearchParams = {}, limit = 50): Promise<EmailListItem[]> {
     const client = await this.ensureConnected();
     const lock = await client.getMailboxLock(folder);
 
     try {
       const criteria = buildSearchCriteria(params);
       const searchResult = await client.search(criteria, { uid: true });
-      const uids = searchResult === false ? [] : searchResult;
-      if (uids.length === 0) return [];
+      const allUids = searchResult === false ? [] : searchResult;
+      if (allUids.length === 0) return [];
+
+      // Limit results server-side: take newest UIDs only
+      const uids = allUids.sort((a, b) => b - a).slice(0, limit);
 
       const out: EmailListItem[] = [];
       for await (const msg of client.fetch(uids, {

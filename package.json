@@ -1,15 +1,16 @@
 {
   "name": "@aiwerk/mcp-server-imap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "IMAP/SMTP MCP server for listing, reading, searching and sending email",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "bin": {
-    "mcp-server-imap": "dist/server.js"
+    "mcp-server-imap": "dist/src/server.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/tests/**/*.test.js"
+    "test": "npm run build && node --test dist/tests/**/*.test.js",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -17,7 +18,7 @@
     "smtp",
     "email"
   ],
-  "author": "",
+  "author": "AIWerk <kontakt@aiwerk.ch>",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.19.1",
@@ -29,5 +30,11 @@
     "@types/node": "^25.5.0",
     "@types/nodemailer": "^7.0.2",
     "typescript": "^5.9.2"
-  }
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
 }

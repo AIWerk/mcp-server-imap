@@ -21,10 +21,7 @@ export type EmailSendParams = {
   inReplyTo?: string;
 };
 
-function parseBool(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-}
+import { parseBool } from './utils.js';
 
 export function readSmtpConfig(env: NodeJS.ProcessEnv = process.env): SmtpConfig {
   const imapHost = env.IMAP_HOST?.trim();
