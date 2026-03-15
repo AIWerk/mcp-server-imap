@@ -1,0 +1,33 @@
+{
+  "name": "@aiwerk/mcp-server-imap",
+  "version": "1.0.0",
+  "description": "IMAP/SMTP MCP server for listing, reading, searching and sending email",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "mcp-server-imap": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/tests/**/*.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "imap",
+    "smtp",
+    "email"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.19.1",
+    "imapflow": "^1.1.1",
+    "nodemailer": "^7.0.5",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/nodemailer": "^7.0.2",
+    "typescript": "^5.9.2"
+  }
+}
