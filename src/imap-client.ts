@@ -238,6 +238,8 @@ export class ImapClient {
   private readonly config: ImapConfig;
   private readonly createClient: (cfg: ImapConfig) => ImapFlowLike;
   private client: ImapFlowLike | null = null;
+  // Cache parsed emails to avoid double MIME parsing (e.g. list attachments then download one)
+  private parsedCache = new Map<string, import('mailparser').ParsedMail>();
   private connecting: Promise<ImapFlowLike> | null = null;
 
   constructor(opts?: { env?: NodeJS.ProcessEnv; clientFactory?: (cfg: ImapConfig) => ImapFlowLike }) {
@@ -310,6 +312,8 @@ export class ImapClient {
 
       if (latestUids.length === 0) return [];
 
+      // Step 1: fetch with bodyParts only (no source — fast)
+      const needsSourceFetch: number[] = [];
       for await (const msg of client.fetch(
         latestUids,
         {
@@ -317,16 +321,10 @@ export class ImapClient {
           flags: true,
           internalDate: true,
           bodyParts: [{ key: 'TEXT', start: 0, maxLength: 200 }],
-          source: true,
         },
         { uid: true }
       )) {
-        let snippet = extractSnippet(msg.bodyParts);
-        if (!snippet && msg.source) {
-          const parsed = await simpleParser(msg.source);
-          snippet = toSnippet(parsed.text || '');
-        }
-
+        const snippet = extractSnippet(msg.bodyParts);
         items.push({
           uid: msg.uid,
           from: formatAddresses(msg.envelope?.from),
@@ -336,6 +334,19 @@ export class ImapClient {
           flags: Array.from(msg.flags ?? []),
           snippet,
         });
+        if (!snippet) {
+          needsSourceFetch.push(msg.uid);
+        }
+      }
+
+      // Step 2: only fetch source for messages where bodyParts snippet was empty
+      if (needsSourceFetch.length > 0) {
+        for await (const msg of client.fetch(needsSourceFetch, { source: true }, { uid: true })) {
+          const parsed = await simpleParser(msg.source ?? Buffer.alloc(0));
+          const snippet = toSnippet(parsed.text || '');
+          const item = items.find((i) => i.uid === msg.uid);
+          if (item) item.snippet = snippet;
+        }
       }
 
       return items.sort((a, b) => b.uid - a.uid);
@@ -480,12 +491,21 @@ export class ImapClient {
     const lock = await client.getMailboxLock(folder);
 
     try {
-      const message = await client.fetchOne(uid, { source: true }, { uid: true });
-      if (!message) {
-        throw new Error(`Message not found: uid ${uid}`);
+      const cacheKey = `${folder}:${uid}`;
+      let parsed = this.parsedCache.get(cacheKey);
+      if (!parsed) {
+        const message = await client.fetchOne(uid, { source: true }, { uid: true });
+        if (!message) {
+          throw new Error(`Message not found: uid ${uid}`);
+        }
+        parsed = await simpleParser(message.source ?? Buffer.alloc(0));
+        this.parsedCache.set(cacheKey, parsed);
+        // Evict old entries (keep max 10)
+        if (this.parsedCache.size > 10) {
+          const oldest = this.parsedCache.keys().next().value;
+          if (oldest) this.parsedCache.delete(oldest);
+        }
       }
-
-      const parsed = await simpleParser(message.source ?? Buffer.alloc(0));
       const attachments = (parsed.attachments || []).map((attachment) => ({
         filename: attachment.filename || 'unnamed',
         size: attachment.size,
