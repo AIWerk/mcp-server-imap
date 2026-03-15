@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.3] - 2026-03-15
+
+### Fixed
+- replyAll self-filter: extract bare email from "Name <email>" format in SMTP_FROM/IMAP_USER
+
+## [1.1.2] - 2026-03-15
+
+### Performance
+- listEmails: two-step fetch (bodyParts first, source only if snippet empty)
+- getAttachment: LRU parsed email cache (max 10) avoids double MIME parse
+
+## [1.1.1] - 2026-03-15
+
+### Fixed
+- replyAll: filter self-address from CC to avoid sending to ourselves
+
 ## [1.1.0] - 2026-03-15
 
 ### Added

@@ -268,8 +268,15 @@ export function createServer() {
 
         const additionalCc = toAddressList(cc);
         // Filter out our own address from CC to avoid sending to ourselves
-        const selfAddress = (process.env.SMTP_FROM || process.env.IMAP_USER || '').toLowerCase();
-        const isNotSelf = (addr: string) => addr.toLowerCase() !== selfAddress;
+        // Extract bare email from "Name <email>" format if present
+        const rawSelf = process.env.SMTP_FROM || process.env.IMAP_USER || '';
+        const selfMatch = rawSelf.match(/<([^>]+)>/);
+        const selfAddress = (selfMatch ? selfMatch[1] : rawSelf).toLowerCase();
+        const isNotSelf = (addr: string) => {
+          const addrMatch = addr.match(/<([^>]+)>/);
+          const bare = (addrMatch ? addrMatch[1] : addr).toLowerCase();
+          return bare !== selfAddress;
+        };
 
         const ccRecipients = replyAll
           ? uniqueAddresses([...original.to, ...original.cc, ...additionalCc].filter((entry) => !to.includes(entry)).filter(isNotSelf))
