@@ -55,6 +55,20 @@ export const toolSchemas = {
     replyTo: z.string().optional(),
     inReplyTo: z.string().optional(),
   }),
+  email_reply: z.object({
+    uid: z.number().int().positive(),
+    folder: z.string().default('INBOX').optional(),
+    body: z.string(),
+    html: z.boolean().optional(),
+    cc: z.union([z.string(), z.array(z.string())]).optional(),
+    replyAll: z.boolean().default(false).optional(),
+  }),
+  email_attachment: z.object({
+    uid: z.number().int().positive(),
+    folder: z.string().default('INBOX').optional(),
+    filename: z.string().optional(),
+    index: z.number().int().min(0).optional(),
+  }),
 };
 
 function toolSuccess(data: unknown) {
@@ -71,13 +85,34 @@ function toolError(error: unknown) {
   };
 }
 
+function isSmtpSendEnabled(): boolean {
+  return ['1', 'true', 'yes', 'on'].includes((process.env.SMTP_SEND_ENABLED ?? '').toLowerCase());
+}
+
+function toAddressList(value?: string | string[]): string[] {
+  if (!value) return [];
+  return (Array.isArray(value) ? value : [value]).map((entry) => entry.trim()).filter(Boolean);
+}
+
+function normalizeReplySubject(subject: string): string {
+  return /^re:\s*/i.test(subject) ? subject : `Re: ${subject}`;
+}
+
+function uniqueAddresses(addresses: string[]): string[] {
+  return Array.from(new Set(addresses));
+}
+
+function mergeReferences(references: string[], messageId?: string): string[] {
+  return uniqueAddresses([...references, ...(messageId ? [messageId] : [])]);
+}
+
 export function createServer() {
   const imap = new ImapClient();
   const smtp = new SmtpClient();
 
   const server = new McpServer({
     name: '@aiwerk/mcp-server-imap',
-    version: '1.0.0',
+    version: '1.1.0',
   });
 
   server.registerTool(
@@ -201,10 +236,7 @@ export function createServer() {
     },
     async (input) => {
       try {
-        const sendEnabled = ['1', 'true', 'yes', 'on'].includes(
-          (process.env.SMTP_SEND_ENABLED ?? '').toLowerCase()
-        );
-        if (!sendEnabled) {
+        if (!isSmtpSendEnabled()) {
           return toolError(
             new Error('Email sending is disabled. Set SMTP_SEND_ENABLED=true to enable.')
           );
@@ -217,9 +249,68 @@ export function createServer() {
     }
   );
 
+  server.registerTool(
+    'email_reply',
+    {
+      description: 'Reply to an existing email via SMTP',
+      inputSchema: toolSchemas.email_reply.shape,
+    },
+    async ({ uid, folder = 'INBOX', body, html, cc, replyAll = false }) => {
+      try {
+        if (!isSmtpSendEnabled()) {
+          return toolError(
+            new Error('Email sending is disabled. Set SMTP_SEND_ENABLED=true to enable.')
+          );
+        }
+
+        const original = await imap.getReplyContext(uid, folder);
+        const to = uniqueAddresses(original.from);
+
+        const additionalCc = toAddressList(cc);
+        const ccRecipients = replyAll
+          ? uniqueAddresses([...original.to, ...original.cc, ...additionalCc].filter((entry) => !to.includes(entry)))
+          : additionalCc;
+
+        const subject = normalizeReplySubject(original.subject || '(no subject)');
+        const references = mergeReferences(original.references, original.messageId);
+
+        const result = await smtp.sendMail({
+          to,
+          subject,
+          body,
+          html,
+          cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+          inReplyTo: original.messageId,
+          references: references.length > 0 ? references : undefined,
+        });
+
+        return toolSuccess(result);
+      } catch (error) {
+        return toolError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    'email_attachment',
+    {
+      description: 'List or fetch a message attachment',
+      inputSchema: toolSchemas.email_attachment.shape,
+    },
+    async ({ uid, folder = 'INBOX', filename, index }) => {
+      try {
+        const attachment = await imap.getAttachment(uid, folder, filename, index);
+        return toolSuccess(attachment);
+      } catch (error) {
+        return toolError(error);
+      }
+    }
+  );
+
   return {
     server,
     close: async () => {
+      await smtp.close();
       await imap.close();
       await server.close();
     },

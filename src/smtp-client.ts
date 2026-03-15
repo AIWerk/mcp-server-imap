@@ -19,6 +19,7 @@ export type EmailSendParams = {
   bcc?: string | string[];
   replyTo?: string;
   inReplyTo?: string;
+  references?: string | string[];
 };
 
 import { parseBool } from './utils.js';
@@ -47,32 +48,39 @@ export function readSmtpConfig(env: NodeJS.ProcessEnv = process.env): SmtpConfig
 
 export class SmtpClient {
   private readonly config: SmtpConfig;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
     this.config = readSmtpConfig(env);
   }
 
-  async sendMail(params: EmailSendParams): Promise<{ messageId: string; accepted: string[] }> {
+  private getTransporter(): nodemailer.Transporter {
     if (!this.config.host) {
       throw new Error('SMTP not configured');
     }
 
-    const transportConfig: SMTPTransport.Options = {
-      host: this.config.host,
-      port: this.config.port,
-      secure: this.config.tls,
-      auth:
-        this.config.user && this.config.pass
-          ? {
-              user: this.config.user,
-              pass: this.config.pass,
-            }
-          : undefined,
-    };
+    if (!this.transporter) {
+      const transportConfig: SMTPTransport.Options = {
+        host: this.config.host,
+        port: this.config.port,
+        secure: this.config.tls,
+        auth:
+          this.config.user && this.config.pass
+            ? {
+                user: this.config.user,
+                pass: this.config.pass,
+              }
+            : undefined,
+      };
 
-    const transporter = nodemailer.createTransport(transportConfig);
+      this.transporter = nodemailer.createTransport(transportConfig);
+    }
 
-    const info = await transporter.sendMail({
+    return this.transporter;
+  }
+
+  async sendMail(params: EmailSendParams): Promise<{ messageId: string; accepted: string[] }> {
+    const info = await this.getTransporter().sendMail({
       from: this.config.from,
       to: params.to,
       cc: params.cc,
@@ -82,11 +90,18 @@ export class SmtpClient {
       html: params.html ? params.body : undefined,
       replyTo: params.replyTo,
       inReplyTo: params.inReplyTo,
+      references: params.references,
     });
 
     return {
       messageId: info.messageId,
-      accepted: (info.accepted ?? []).map((entry) => String(entry)),
+      accepted: (info.accepted ?? []).map((entry: unknown) => String(entry)),
     };
+  }
+
+  async close(): Promise<void> {
+    if (!this.transporter) return;
+    this.transporter.close();
+    this.transporter = null;
   }
 }

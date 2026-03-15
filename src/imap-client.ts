@@ -1,4 +1,5 @@
 import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
 
 export type EmailAddress = { name?: string; address?: string };
 
@@ -16,6 +17,12 @@ export type EmailAttachment = {
   filename: string;
   size: number;
   contentType: string;
+  cid?: string;
+  partId?: string;
+};
+
+export type EmailAttachmentContent = EmailAttachment & {
+  content: string;
 };
 
 export type EmailReadResult = {
@@ -27,6 +34,15 @@ export type EmailReadResult = {
   date: string | null;
   body: string;
   attachments: EmailAttachment[];
+};
+
+export type EmailReplyContext = {
+  from: string[];
+  to: string[];
+  cc: string[];
+  subject: string;
+  messageId?: string;
+  references: string[];
 };
 
 export type FolderInfo = {
@@ -69,7 +85,14 @@ type ImapFlowLike = {
     range: string | number[] | Record<string, unknown>,
     query: Record<string, unknown>,
     options?: { uid?: boolean }
-  ) => AsyncIterable<{ uid: number; envelope?: any; flags?: Set<string>; bodyParts?: Map<string, Buffer>; internalDate?: Date }>;
+  ) => AsyncIterable<{
+    uid: number;
+    envelope?: any;
+    flags?: Set<string>;
+    bodyParts?: Map<string, Buffer>;
+    internalDate?: Date;
+    source?: Buffer;
+  }>;
   fetchOne: (
     range: string | number,
     query: Record<string, unknown>,
@@ -166,40 +189,30 @@ function extractSnippet(parts?: Map<string, Buffer>): string {
     .slice(0, 200);
 }
 
-function decodeBody(source: Buffer | undefined, format: 'text' | 'html'): string {
-  if (!source) return '';
-  const raw = source.toString('utf8');
-  const split = raw.split(/\r?\n\r?\n/);
-  if (split.length < 2) return raw;
-
-  const body = split.slice(1).join('\n\n');
-  if (format === 'html') return body;
-
-  return body
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+function toSnippet(text: string): string {
+  return text
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    .slice(0, 200);
 }
 
-function collectAttachments(node: any, out: EmailAttachment[]): void {
-  if (!node) return;
+function normalizeMessageIds(value: unknown): string[] {
+  if (!value) return [];
 
-  const filename = node?.dispositionParameters?.filename ?? node?.parameters?.name;
-  const disposition = String(node?.disposition ?? '').toLowerCase();
-
-  if (filename || disposition === 'attachment') {
-    out.push({
-      filename: filename ?? 'attachment',
-      size: Number(node?.size ?? 0),
-      contentType: `${node?.type ?? 'application'}/${node?.subtype ?? 'octet-stream'}`,
-    });
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry).trim()).filter(Boolean);
   }
 
-  if (Array.isArray(node.childNodes)) {
-    for (const child of node.childNodes) collectAttachments(child, out);
+  const raw = String(value);
+  const matches = raw.match(/<[^>]+>/g);
+  if (matches && matches.length > 0) {
+    return matches.map((item) => item.trim()).filter(Boolean);
   }
+
+  return raw
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function normalizeImapError(error: unknown, config?: Pick<ImapConfig, 'host' | 'port'>): Error {
@@ -288,23 +301,32 @@ export class ImapClient {
       const items: EmailListItem[] = [];
       const criteria = unreadOnly ? { seen: false } : { all: true };
 
-      // Use IMAP SEARCH first to get UIDs, then fetch only the latest N
       const uids = await client.search(criteria, { uid: true });
       if (!uids || (Array.isArray(uids) && uids.length === 0)) {
         return [];
       }
       const uidList = Array.isArray(uids) ? uids : [];
-      // Sort descending (newest first) and take only `limit` UIDs
       const latestUids = uidList.sort((a, b) => b - a).slice(0, limit);
 
       if (latestUids.length === 0) return [];
 
-      for await (const msg of client.fetch(latestUids, {
-        envelope: true,
-        flags: true,
-        internalDate: true,
-        bodyParts: [{ key: 'TEXT', start: 0, maxLength: 200 }],
-      }, { uid: true })) {
+      for await (const msg of client.fetch(
+        latestUids,
+        {
+          envelope: true,
+          flags: true,
+          internalDate: true,
+          bodyParts: [{ key: 'TEXT', start: 0, maxLength: 200 }],
+          source: true,
+        },
+        { uid: true }
+      )) {
+        let snippet = extractSnippet(msg.bodyParts);
+        if (!snippet && msg.source) {
+          const parsed = await simpleParser(msg.source);
+          snippet = toSnippet(parsed.text || '');
+        }
+
         items.push({
           uid: msg.uid,
           from: formatAddresses(msg.envelope?.from),
@@ -312,7 +334,7 @@ export class ImapClient {
           subject: msg.envelope?.subject ?? '',
           date: msg.envelope?.date ? new Date(msg.envelope.date).toISOString() : null,
           flags: Array.from(msg.flags ?? []),
-          snippet: extractSnippet(msg.bodyParts),
+          snippet,
         });
       }
 
@@ -329,18 +351,28 @@ export class ImapClient {
     const lock = await client.getMailboxLock(folder);
 
     try {
-      const message = await client.fetchOne(uid, {
-        envelope: true,
-        source: true,
-        bodyStructure: true,
-      }, { uid: true });
+      const message = await client.fetchOne(
+        uid,
+        {
+          envelope: true,
+          source: true,
+        },
+        { uid: true }
+      );
 
       if (!message) {
         throw new Error(`Message not found: uid ${uid}`);
       }
 
-      const attachments: EmailAttachment[] = [];
-      collectAttachments(message.bodyStructure, attachments);
+      const parsed = await simpleParser(message.source ?? Buffer.alloc(0));
+      const body = format === 'html' ? String(parsed.html || parsed.textAsHtml || '') : parsed.text || '';
+      const attachments = (parsed.attachments || []).map((attachment) => ({
+        filename: attachment.filename || 'unnamed',
+        size: attachment.size,
+        contentType: attachment.contentType,
+        cid: attachment.cid || undefined,
+        partId: (attachment as { partId?: string }).partId || undefined,
+      }));
 
       return {
         uid: message.uid,
@@ -349,7 +381,7 @@ export class ImapClient {
         cc: formatAddresses(message.envelope?.cc),
         subject: message.envelope?.subject ?? '',
         date: message.envelope?.date ? new Date(message.envelope.date).toISOString() : null,
-        body: decodeBody(message.source, format),
+        body,
         attachments,
       };
     } catch (error) {
@@ -369,15 +401,18 @@ export class ImapClient {
       const allUids = searchResult === false ? [] : searchResult;
       if (allUids.length === 0) return [];
 
-      // Limit results server-side: take newest UIDs only
       const uids = allUids.sort((a, b) => b - a).slice(0, limit);
 
       const out: EmailListItem[] = [];
-      for await (const msg of client.fetch(uids, {
-        envelope: true,
-        flags: true,
-        bodyParts: [{ key: 'TEXT', start: 0, maxLength: 200 }],
-      }, { uid: true })) {
+      for await (const msg of client.fetch(
+        uids,
+        {
+          envelope: true,
+          flags: true,
+          bodyParts: [{ key: 'TEXT', start: 0, maxLength: 200 }],
+        },
+        { uid: true }
+      )) {
         out.push({
           uid: msg.uid,
           from: formatAddresses(msg.envelope?.from),
@@ -390,6 +425,92 @@ export class ImapClient {
       }
 
       return out.sort((a, b) => b.uid - a.uid);
+    } catch (error) {
+      throw normalizeImapError(error, this.config);
+    } finally {
+      lock.release();
+    }
+  }
+
+  async getReplyContext(uid: number, folder = 'INBOX'): Promise<EmailReplyContext> {
+    const client = await this.ensureConnected();
+    const lock = await client.getMailboxLock(folder);
+
+    try {
+      const message = await client.fetchOne(
+        uid,
+        {
+          envelope: true,
+          source: true,
+        },
+        { uid: true }
+      );
+
+      if (!message) {
+        throw new Error(`Message not found: uid ${uid}`);
+      }
+
+      const parsed = await simpleParser(message.source ?? Buffer.alloc(0));
+      const headerReferences = parsed.headers.get('references');
+      const parsedReferences = normalizeMessageIds(parsed.references);
+      const references = parsedReferences.length > 0 ? parsedReferences : normalizeMessageIds(headerReferences);
+
+      return {
+        from: formatAddresses(message.envelope?.from),
+        to: formatAddresses(message.envelope?.to),
+        cc: formatAddresses(message.envelope?.cc),
+        subject: message.envelope?.subject ?? '',
+        messageId: parsed.messageId || undefined,
+        references,
+      };
+    } catch (error) {
+      throw normalizeImapError(error, this.config);
+    } finally {
+      lock.release();
+    }
+  }
+
+  async getAttachment(
+    uid: number,
+    folder = 'INBOX',
+    filename?: string,
+    index?: number
+  ): Promise<{ attachments: EmailAttachment[] } | EmailAttachmentContent> {
+    const client = await this.ensureConnected();
+    const lock = await client.getMailboxLock(folder);
+
+    try {
+      const message = await client.fetchOne(uid, { source: true }, { uid: true });
+      if (!message) {
+        throw new Error(`Message not found: uid ${uid}`);
+      }
+
+      const parsed = await simpleParser(message.source ?? Buffer.alloc(0));
+      const attachments = (parsed.attachments || []).map((attachment) => ({
+        filename: attachment.filename || 'unnamed',
+        size: attachment.size,
+        contentType: attachment.contentType,
+        cid: attachment.cid || undefined,
+        partId: (attachment as { partId?: string }).partId || undefined,
+        content: attachment.content.toString('base64'),
+      }));
+
+      if (filename === undefined && index === undefined) {
+        return {
+          attachments: attachments.map(({ content: _content, ...metadata }) => metadata),
+        };
+      }
+
+      const picked =
+        filename !== undefined
+          ? attachments.find((attachment) => attachment.filename === filename)
+          : attachments[index ?? -1];
+
+      if (!picked) {
+        throw new Error('Attachment not found');
+      }
+
+      return picked;
     } catch (error) {
       throw normalizeImapError(error, this.config);
     } finally {

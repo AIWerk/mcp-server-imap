@@ -7,7 +7,7 @@ It exposes tools to list/read/search/manage emails over IMAP and send emails ove
 
 - Works with any provider that supports IMAP + SMTP
 - MCP stdio server (easy to run via `npx` or bridge/desktop configs)
-- Email tools:
+- 10 email tools:
   - `email_list`
   - `email_read`
   - `email_search`
@@ -16,6 +16,9 @@ It exposes tools to list/read/search/manage emails over IMAP and send emails ove
   - `email_flag`
   - `email_delete`
   - `email_send`
+  - `email_reply`
+  - `email_attachment`
+- Uses `mailparser` for robust MIME parsing (multipart, HTML/text fallback, attachments)
 
 ## Quick start
 
@@ -58,12 +61,14 @@ node dist/server.js
 |---|---|---|---|
 | `email_list` | List emails from folder | `folder?`, `limit?`, `unreadOnly?` | `[{ uid, from, to, subject, date, flags, snippet }]` |
 | `email_read` | Read one message | `uid`, `folder?`, `format?` | `{ uid, from, to, cc, subject, date, body, attachments[] }` |
-| `email_search` | Search mailbox | `query?`, `from?`, `to?`, `subject?`, `since?`, `before?`, `unread?`, `folder?` | Same as `email_list` |
+| `email_search` | Search mailbox | `query?`, `from?`, `to?`, `subject?`, `since?`, `before?`, `unread?`, `folder?`, `limit?` | Same as `email_list` |
 | `email_folders` | List folders + counts | none | `[{ name, path, delimiter, specialUse?, messageCount, unseenCount }]` |
 | `email_move` | Move messages | `uids`, `from?`, `to` | `{ moved }` |
 | `email_flag` | Read/star flags | `uids`, `action`, `folder?` | `{ flagged }` |
 | `email_delete` | Move to Trash | `uids`, `folder?` | `{ deleted }` |
 | `email_send` | Send email | `to`, `subject`, `body`, `html?`, `cc?`, `bcc?`, `replyTo?`, `inReplyTo?` | `{ messageId, accepted[] }` |
+| `email_reply` | Reply to a message | `uid`, `folder?`, `body`, `html?`, `cc?`, `replyAll?` | `{ messageId, accepted[] }` |
+| `email_attachment` | List/fetch attachments | `uid`, `folder?`, `filename?`, `index?` | `{ attachments[] }` or `{ filename, contentType, size, content }` |
 
 ## Configuration reference
 
@@ -86,7 +91,7 @@ All values are loaded from environment variables.
 - `SMTP_PASS` (default: `${IMAP_PASS}`)
 - `SMTP_TLS` (default: `true`)
 - `SMTP_FROM` (default: `${IMAP_USER}`)
-- `SMTP_SEND_ENABLED` (default: `false`) - **must be explicitly set to `true` to enable email sending**. This is a safety gate to prevent AI agents from sending emails without explicit opt-in.
+- `SMTP_SEND_ENABLED` (default: `false`) - **must be explicitly set to `true` to enable email sending/replying**. This is a safety gate to prevent AI agents from sending emails without explicit opt-in.
 
 If neither `SMTP_HOST` nor `IMAP_HOST` is set, `email_send` returns:
 
