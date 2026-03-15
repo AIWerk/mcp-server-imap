@@ -92,6 +92,7 @@ All values are loaded from environment variables.
 - `SMTP_TLS` (default: `true`)
 - `SMTP_FROM` (default: `${IMAP_USER}`)
 - `SMTP_SEND_ENABLED` (default: `false`) - **must be explicitly set to `true` to enable email sending/replying**. This is a safety gate to prevent AI agents from sending emails without explicit opt-in.
+- `IMAP_DEBUG` (default: `false`) - set to `true` to enable verbose IMAP protocol logging (useful for troubleshooting connection issues)
 
 If neither `SMTP_HOST` nor `IMAP_HOST` is set, `email_send` returns:
 

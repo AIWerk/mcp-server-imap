@@ -253,6 +253,9 @@ export class ImapClient {
           secure: cfg.tls,
           auth: { user: cfg.user, pass: cfg.pass },
           socketTimeout: cfg.timeoutMs,
+          logger: parseBool(process.env.IMAP_DEBUG, false)
+            ? undefined  // default pino logger (verbose)
+            : false as any,  // suppress all IMAP protocol logging
         }) as unknown as ImapFlowLike);
   }
 
