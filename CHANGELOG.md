@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.5] - 2026-03-16
+
+### Changed
+- Added license section to README.md
+
+## [1.1.4] - 2026-03-15
+
+### Fixed
+- Minor dependency updates
+
 ## [1.1.3] - 2026-03-15
 
 ### Fixed
