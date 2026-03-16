@@ -157,3 +157,7 @@ If neither `SMTP_HOST` nor `IMAP_HOST` is set, `email_send` returns:
 - Keep credentials in `.env` or secret manager.
 - Never commit credentials to git.
 - This server does not log passwords and only uses credentials to establish IMAP/SMTP sessions.
+
+## License
+
+MIT — [AIWerk](https://aiwerk.ch)
