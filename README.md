@@ -1,7 +1,15 @@
 # @aiwerk/mcp-server-imap
 
-IMAP/SMTP MCP server for any email provider.  
-It exposes tools to list/read/search/manage emails over IMAP and send emails over SMTP.
+IMAP/SMTP MCP server that works with **any** email provider. Set host, user, pass — done.
+
+Part of the [AIWerk MCP ecosystem](https://docs.aiwerk.ch). Install in one command via `mcp-bridge install imap-email`.
+
+## Highlights
+
+- **Universal** — works with any provider that speaks IMAP: Hostpoint, Fastmail, ProtonMail Bridge, self-hosted Dovecot, Microsoft 365, Gmail, Yahoo, and more.
+- **Simple setup** — just `IMAP_HOST`, `IMAP_USER`, `IMAP_PASS` and you're connected.
+- **Safety first** — email sending is **disabled by default** (`SMTP_SEND_ENABLED=false`). Your AI agent can read emails out of the box but can't send anything until you explicitly opt in.
+- **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading.
 
 ## Features
 
@@ -157,6 +165,12 @@ If neither `SMTP_HOST` nor `IMAP_HOST` is set, `email_send` returns:
 - Keep credentials in `.env` or secret manager.
 - Never commit credentials to git.
 - This server does not log passwords and only uses credentials to establish IMAP/SMTP sessions.
+
+## Part of the AIWerk MCP ecosystem
+
+- **[@aiwerk/mcp-bridge](https://github.com/AIWerk/mcp-bridge)** — MCP server multiplexer with smart routing, caching, and 15+ built-in server recipes
+- **[@aiwerk/mcp-server-imap](https://github.com/AIWerk/mcp-server-imap)** — this project
+- **[docs.aiwerk.ch](https://docs.aiwerk.ch)** — full documentation
 
 ## License
 
