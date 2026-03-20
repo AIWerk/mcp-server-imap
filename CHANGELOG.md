@@ -5,6 +5,11 @@
 ### Changed
 - **Lazy credential loading:** IMAP/SMTP config is now read on first tool call instead of at startup. The server starts and responds to `tools/list` without requiring credentials. Enables `toolsHash` computation in the AIWerk recipe signing workflow.
 
+## [1.1.6] - 2026-03-16
+
+### Changed
+- README revamp: highlights section, ecosystem links, license section
+
 ## [1.1.5] - 2026-03-16
 
 ### Changed

@@ -9,6 +9,7 @@ Part of the [AIWerk MCP ecosystem](https://docs.aiwerk.ch). Install in one comma
 - **Universal** — works with any provider that speaks IMAP: Hostpoint, Fastmail, ProtonMail Bridge, self-hosted Dovecot, Microsoft 365, Gmail, Yahoo, and more.
 - **Simple setup** — just `IMAP_HOST`, `IMAP_USER`, `IMAP_PASS` and you're connected.
 - **Safety first** — email sending is **disabled by default** (`SMTP_SEND_ENABLED=false`). Your AI agent can read emails out of the box but can't send anything until you explicitly opt in.
+- **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called. This enables toolsHash verification in the AIWerk recipe signing workflow.
 - **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading.
 
 ## Features
