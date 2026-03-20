@@ -2,11 +2,24 @@
 // MCP server that provides email tools via IMAP/SMTP
 
 import * as z from 'zod/v4';
+import { readFileSync } from 'fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { pathToFileURL } from 'node:url';
 import { ImapClient } from './imap-client.js';
 import { SmtpClient } from './smtp-client.js';
+
+function readPackageVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+    return pkg.version;
+  } catch {
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
+    return pkg.version;
+  }
+}
+
+const VERSION = readPackageVersion();
 
 export const toolSchemas = {
   email_list: z.object({
@@ -112,7 +125,7 @@ export function createServer() {
 
   const server = new McpServer({
     name: '@aiwerk/mcp-server-imap',
-    version: '1.1.0',
+    version: VERSION,
   });
 
   server.registerTool(
@@ -269,7 +282,7 @@ export function createServer() {
         const additionalCc = toAddressList(cc);
         // Filter out our own address from CC to avoid sending to ourselves
         // Extract bare email from "Name <email>" format if present
-        const rawSelf = process.env.SMTP_FROM || process.env.IMAP_USER || '';
+        const rawSelf = smtp.getFrom() || process.env.IMAP_USER || '';
         const selfMatch = rawSelf.match(/<([^>]+)>/);
         const selfAddress = (selfMatch ? selfMatch[1] : rawSelf).toLowerCase();
         const isNotSelf = (addr: string) => {
@@ -329,9 +342,17 @@ export function createServer() {
 }
 
 async function main() {
-  const { server } = createServer();
+  const { server, close } = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  const shutdown = async () => {
+    await close();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 const isMain = process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false;

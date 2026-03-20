@@ -241,6 +241,7 @@ export class ImapClient {
   private client: ImapFlowLike | null = null;
   // Cache parsed emails to avoid double MIME parsing (e.g. list attachments then download one)
   private parsedCache = new Map<string, import('mailparser').ParsedMail>();
+  private trashFolderCache: string | null = null;
   private connecting: Promise<ImapFlowLike> | null = null;
 
   constructor(opts?: { env?: NodeJS.ProcessEnv; clientFactory?: (cfg: ImapConfig) => ImapFlowLike }) {
@@ -427,6 +428,7 @@ export class ImapClient {
       const uids = allUids.sort((a, b) => b - a).slice(0, limit);
 
       const out: EmailListItem[] = [];
+      const needsSourceFetch: number[] = [];
       for await (const msg of client.fetch(
         uids,
         {
@@ -436,6 +438,7 @@ export class ImapClient {
         },
         { uid: true }
       )) {
+        const snippet = extractSnippet(msg.bodyParts);
         out.push({
           uid: msg.uid,
           from: formatAddresses(msg.envelope?.from),
@@ -443,8 +446,20 @@ export class ImapClient {
           subject: msg.envelope?.subject ?? '',
           date: msg.envelope?.date ? new Date(msg.envelope.date).toISOString() : null,
           flags: Array.from(msg.flags ?? []),
-          snippet: extractSnippet(msg.bodyParts),
+          snippet,
         });
+        if (!snippet) {
+          needsSourceFetch.push(msg.uid);
+        }
+      }
+
+      if (needsSourceFetch.length > 0) {
+        for await (const msg of client.fetch(needsSourceFetch, { source: true }, { uid: true })) {
+          const parsed = await simpleParser(msg.source ?? Buffer.alloc(0));
+          const snippet = toSnippet(parsed.text || '');
+          const item = out.find((entry) => entry.uid === msg.uid);
+          if (item) item.snippet = snippet;
+        }
       }
 
       return out.sort((a, b) => b.uid - a.uid);
@@ -505,7 +520,11 @@ export class ImapClient {
     try {
       const cacheKey = `${folder}:${uid}`;
       let parsed = this.parsedCache.get(cacheKey);
-      if (!parsed) {
+      if (parsed) {
+        // Mark as recently used to keep eviction order as true LRU.
+        this.parsedCache.delete(cacheKey);
+        this.parsedCache.set(cacheKey, parsed);
+      } else {
         const message = await client.fetchOne(uid, { source: true }, { uid: true });
         if (!message) {
           throw new Error(`Message not found: uid ${uid}`);
@@ -524,25 +543,29 @@ export class ImapClient {
         contentType: attachment.contentType,
         cid: attachment.cid || undefined,
         partId: (attachment as { partId?: string }).partId || undefined,
-        content: attachment.content.toString('base64'),
       }));
 
       if (filename === undefined && index === undefined) {
-        return {
-          attachments: attachments.map(({ content: _content, ...metadata }) => metadata),
-        };
+        return { attachments };
       }
 
-      const picked =
+      const parsedAttachments = parsed.attachments || [];
+      const pickedIndex =
         filename !== undefined
-          ? attachments.find((attachment) => attachment.filename === filename)
-          : attachments[index ?? -1];
+          ? attachments.findIndex((attachment) => attachment.filename === filename)
+          : (index ?? -1);
 
-      if (!picked) {
+      const pickedMetadata = attachments[pickedIndex];
+      const pickedParsed = parsedAttachments[pickedIndex];
+
+      if (!pickedMetadata || !pickedParsed) {
         throw new Error('Attachment not found');
       }
 
-      return picked;
+      return {
+        ...pickedMetadata,
+        content: pickedParsed.content.toString('base64'),
+      };
     } catch (error) {
       throw normalizeImapError(error, this.config ?? undefined);
     } finally {
@@ -608,15 +631,23 @@ export class ImapClient {
   }
 
   async detectTrashFolder(): Promise<string> {
+    if (this.trashFolderCache) {
+      return this.trashFolderCache;
+    }
+
     const folders = await this.listFolders();
 
     const bySpecialUse = folders.find((folder) => String(folder.specialUse ?? '').toLowerCase() === '\\trash');
-    if (bySpecialUse) return bySpecialUse.path;
+    if (bySpecialUse) {
+      this.trashFolderCache = bySpecialUse.path;
+      return bySpecialUse.path;
+    }
 
     const common = ['trash', 'deleted messages', 'deleted', 'bin', 'papierkorb', 'gelöscht'];
     const fallback = folders.find((folder) => common.some((name) => folder.path.toLowerCase().includes(name)));
 
-    return fallback?.path ?? 'Trash';
+    this.trashFolderCache = fallback?.path ?? 'Trash';
+    return this.trashFolderCache;
   }
 
   async deleteEmails(uids: number[], folder = 'INBOX'): Promise<number> {

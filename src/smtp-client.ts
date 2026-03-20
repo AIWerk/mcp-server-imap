@@ -74,6 +74,8 @@ export class SmtpClient {
         host: config.host,
         port: config.port,
         secure: config.tls,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
         auth:
           config.user && config.pass
             ? {
@@ -87,6 +89,10 @@ export class SmtpClient {
     }
 
     return this.transporter;
+  }
+
+  getFrom(): string {
+    return this.getConfig().from ?? '';
   }
 
   async sendMail(params: EmailSendParams): Promise<{ messageId: string; accepted: string[] }> {
