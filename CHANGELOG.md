@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.8] - 2026-03-20
+
+### Fixed (Axel review — 8 findings, 7.8→9.0)
+- **🔴 Dynamic version:** MCP server version now read from package.json (was hardcoded `1.1.0`)
+- **🟡 Graceful shutdown:** SIGTERM/SIGINT handlers call `close()` for clean IMAP/SMTP disconnect
+- **🟡 Search snippet fallback:** `searchEmails` now uses two-step snippet extraction (bodyParts → source parse), matching `listEmails` behavior
+- **🟡 Trash folder cache:** `detectTrashFolder()` result cached — no more repeated IMAP LIST on every delete
+- **🟡 True LRU cache:** Parsed email cache now uses delete+set on hit for correct eviction order
+- **🟢 Attachment base64:** Only converted on actual fetch, not when listing metadata
+- **🟢 SMTP timeouts:** Added `connectionTimeout` and `greetingTimeout` (15s each)
+- **🟢 Reply sender fix:** `email_reply` uses `smtp.getFrom()` instead of direct `process.env.SMTP_FROM`
+
 ## [1.1.7] - 2026-03-20
 
 ### Changed
