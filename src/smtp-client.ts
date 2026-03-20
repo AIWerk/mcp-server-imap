@@ -47,28 +47,38 @@ export function readSmtpConfig(env: NodeJS.ProcessEnv = process.env): SmtpConfig
 }
 
 export class SmtpClient {
-  private readonly config: SmtpConfig;
+  private readonly env: NodeJS.ProcessEnv;
+  private config: SmtpConfig | null = null;
   private transporter: nodemailer.Transporter | null = null;
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
-    this.config = readSmtpConfig(env);
+    this.env = env;
+  }
+
+  private getConfig(): SmtpConfig {
+    if (!this.config) {
+      this.config = readSmtpConfig(this.env);
+    }
+    return this.config;
   }
 
   private getTransporter(): nodemailer.Transporter {
-    if (!this.config.host) {
+    const config = this.getConfig();
+
+    if (!config.host) {
       throw new Error('SMTP not configured');
     }
 
     if (!this.transporter) {
       const transportConfig: SMTPTransport.Options = {
-        host: this.config.host,
-        port: this.config.port,
-        secure: this.config.tls,
+        host: config.host,
+        port: config.port,
+        secure: config.tls,
         auth:
-          this.config.user && this.config.pass
+          config.user && config.pass
             ? {
-                user: this.config.user,
-                pass: this.config.pass,
+                user: config.user,
+                pass: config.pass,
               }
             : undefined,
       };
@@ -80,8 +90,9 @@ export class SmtpClient {
   }
 
   async sendMail(params: EmailSendParams): Promise<{ messageId: string; accepted: string[] }> {
+    const config = this.getConfig();
     const info = await this.getTransporter().sendMail({
-      from: this.config.from,
+      from: config.from,
       to: params.to,
       cc: params.cc,
       bcc: params.bcc,

@@ -235,7 +235,8 @@ function normalizeImapError(error: unknown, config?: Pick<ImapConfig, 'host' | '
 }
 
 export class ImapClient {
-  private readonly config: ImapConfig;
+  private readonly env: NodeJS.ProcessEnv;
+  private config: ImapConfig | null = null;
   private readonly createClient: (cfg: ImapConfig) => ImapFlowLike;
   private client: ImapFlowLike | null = null;
   // Cache parsed emails to avoid double MIME parsing (e.g. list attachments then download one)
@@ -243,7 +244,7 @@ export class ImapClient {
   private connecting: Promise<ImapFlowLike> | null = null;
 
   constructor(opts?: { env?: NodeJS.ProcessEnv; clientFactory?: (cfg: ImapConfig) => ImapFlowLike }) {
-    this.config = readImapConfig(opts?.env);
+    this.env = opts?.env ?? process.env;
     this.createClient =
       opts?.clientFactory ??
       ((cfg) =>
@@ -253,10 +254,17 @@ export class ImapClient {
           secure: cfg.tls,
           auth: { user: cfg.user, pass: cfg.pass },
           socketTimeout: cfg.timeoutMs,
-          logger: parseBool(process.env.IMAP_DEBUG, false)
+          logger: parseBool(this.env.IMAP_DEBUG, false)
             ? undefined  // default pino logger (verbose)
             : false as any,  // suppress all IMAP protocol logging
         }) as unknown as ImapFlowLike);
+  }
+
+  private getConfig(): ImapConfig {
+    if (!this.config) {
+      this.config = readImapConfig(this.env);
+    }
+    return this.config;
   }
 
   private async ensureConnected(): Promise<ImapFlowLike> {
@@ -264,7 +272,8 @@ export class ImapClient {
     if (this.connecting) return this.connecting;
 
     this.connecting = (async () => {
-      const client = this.createClient(this.config);
+      const config = this.getConfig();
+      const client = this.createClient(config);
       client.on('close', () => {
         this.client = null;
       });
@@ -275,7 +284,7 @@ export class ImapClient {
       try {
         await client.connect();
       } catch (error) {
-        throw normalizeImapError(error, this.config);
+        throw normalizeImapError(error, config);
       }
 
       this.client = client;
@@ -354,7 +363,7 @@ export class ImapClient {
 
       return items.sort((a, b) => b.uid - a.uid);
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
@@ -399,7 +408,7 @@ export class ImapClient {
         attachments,
       };
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
@@ -440,7 +449,7 @@ export class ImapClient {
 
       return out.sort((a, b) => b.uid - a.uid);
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
@@ -478,7 +487,7 @@ export class ImapClient {
         references,
       };
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
@@ -535,7 +544,7 @@ export class ImapClient {
 
       return picked;
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
@@ -561,7 +570,7 @@ export class ImapClient {
 
       return out;
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     }
   }
 
@@ -572,7 +581,7 @@ export class ImapClient {
       await client.messageMove(uids, to, { uid: true });
       return uids.length;
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
@@ -592,7 +601,7 @@ export class ImapClient {
       if (action === 'unstar') await client.messageFlagsRemove(uids, ['\\Flagged'], { uid: true });
       return uids.length;
     } catch (error) {
-      throw normalizeImapError(error, this.config);
+      throw normalizeImapError(error, this.config ?? undefined);
     } finally {
       lock.release();
     }
