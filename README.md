@@ -1,38 +1,43 @@
 # @aiwerk/mcp-server-imap
 
-IMAP/SMTP MCP server that works with **any** email provider. Set host, user, pass — done.
+[![npm version](https://img.shields.io/npm/v/@aiwerk/mcp-server-imap)](https://www.npmjs.com/package/@aiwerk/mcp-server-imap)
+[![npm downloads](https://img.shields.io/npm/dm/@aiwerk/mcp-server-imap)](https://www.npmjs.com/package/@aiwerk/mcp-server-imap)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Part of the [AIWerk MCP ecosystem](https://docs.aiwerk.ch). Install in one command via `mcp-bridge install imap-email`.
+**IMAP/SMTP MCP server that works with any email provider.** Set host, user, pass — done.
+
+Unlike Gmail-only or Outlook-only MCP servers, this one speaks standard IMAP/SMTP — so it works with **every** email provider out of the box.
+
+## Why this server?
+
+Most email MCP servers only work with one provider (Gmail, Outlook). This one works with **any** provider that supports IMAP:
+
+- Gmail, Outlook, Yahoo — yes
+- Fastmail, ProtonMail Bridge, Zoho — yes
+- Self-hosted (Dovecot, Postfix, hMailServer) — yes
+- Corporate/hosted (Hostpoint, Infomaniak, OVH) — yes
+
+One server, every mailbox.
 
 ## Highlights
 
-- **Universal** — works with any provider that speaks IMAP: Hostpoint, Fastmail, ProtonMail Bridge, self-hosted Dovecot, Microsoft 365, Gmail, Yahoo, and more.
-- **Simple setup** — just `IMAP_HOST`, `IMAP_USER`, `IMAP_PASS` and you're connected.
-- **Safety first** — email sending is **disabled by default** (`SMTP_SEND_ENABLED=false`). Your AI agent can read emails out of the box but can't send anything until you explicitly opt in.
-- **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called. This enables toolsHash verification in the AIWerk recipe signing workflow.
-- **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading.
-
-## Features
-
-- Works with any provider that supports IMAP + SMTP
-- MCP stdio server (easy to run via `npx` or bridge/desktop configs)
-- 10 email tools:
-  - `email_list`
-  - `email_read`
-  - `email_search`
-  - `email_folders`
-  - `email_move`
-  - `email_flag`
-  - `email_delete`
-  - `email_send`
-  - `email_reply`
-  - `email_attachment`
-- Uses `mailparser` for robust MIME parsing (multipart, HTML/text fallback, attachments)
+- **Universal** — standard IMAP/SMTP, works everywhere
+- **Simple setup** — just `IMAP_HOST`, `IMAP_USER`, `IMAP_PASS` and you're connected
+- **Safety first** — email sending is **disabled by default** (`SMTP_SEND_ENABLED=false`). Your AI agent can read emails but can't send anything until you explicitly opt in
+- **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called
+- **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading
 
 ## Quick start
 
 ```bash
-# 1) Run directly with npx
+npx @aiwerk/mcp-server-imap
+```
+
+The server starts immediately and responds to `tools/list`. Credentials are only needed when you call a tool.
+
+### With credentials (for actual email access)
+
+```bash
 IMAP_HOST="imap.example.com" \
 IMAP_USER="user@example.com" \
 IMAP_PASS="app-password" \
@@ -40,138 +45,140 @@ SMTP_HOST="smtp.example.com" \
 npx @aiwerk/mcp-server-imap
 ```
 
-### Required IMAP env vars
+## Tools (10)
 
-- `IMAP_HOST`
-- `IMAP_USER`
-- `IMAP_PASS`
+| Tool | Purpose |
+|---|---|
+| `email_list` | List emails from a folder |
+| `email_read` | Read a single message with full body |
+| `email_search` | Search by from/to/subject/date/unread |
+| `email_folders` | List all folders with message counts |
+| `email_move` | Move messages between folders |
+| `email_flag` | Set read/star/flag status |
+| `email_delete` | Move messages to Trash |
+| `email_send` | Send a new email (requires opt-in) |
+| `email_reply` | Reply to a message (requires opt-in) |
+| `email_attachment` | List or download attachments |
 
-### Build from source
+## Configuration
+
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "email": {
+      "command": "npx",
+      "args": ["-y", "@aiwerk/mcp-server-imap"],
+      "env": {
+        "IMAP_HOST": "imap.example.com",
+        "IMAP_USER": "you@example.com",
+        "IMAP_PASS": "your-app-password",
+        "SMTP_HOST": "smtp.example.com"
+      }
+    }
+  }
+}
+```
+
+### Cursor / Windsurf / VS Code
+
+Same config format in the respective MCP settings.
+
+### AIWerk MCP Bridge
 
 ```bash
-git clone <local-or-private-source>
+mcp-bridge install imap-email
+```
+
+Or manually in `mcp-bridge.json`:
+
+```json
+{
+  "mcpServers": {
+    "imap": {
+      "command": "npx",
+      "args": ["-y", "@aiwerk/mcp-server-imap"],
+      "env": {
+        "IMAP_HOST": "${IMAP_HOST}",
+        "IMAP_USER": "${IMAP_USER}",
+        "IMAP_PASS": "${IMAP_PASS}",
+        "SMTP_HOST": "${SMTP_HOST}"
+      }
+    }
+  }
+}
+```
+
+## Environment variables
+
+### IMAP (required)
+
+| Variable | Default | Description |
+|---|---|---|
+| `IMAP_HOST` | — | IMAP server hostname |
+| `IMAP_USER` | — | Email address or username |
+| `IMAP_PASS` | — | Password or app-specific password |
+| `IMAP_PORT` | `993` | IMAP port |
+| `IMAP_TLS` | `true` | Use TLS |
+| `IMAP_TIMEOUT` | `30000` | Connection timeout (ms) |
+
+### SMTP (optional, for sending)
+
+| Variable | Default | Description |
+|---|---|---|
+| `SMTP_HOST` | `${IMAP_HOST}` | SMTP server hostname |
+| `SMTP_PORT` | `465` | SMTP port |
+| `SMTP_USER` | `${IMAP_USER}` | SMTP username |
+| `SMTP_PASS` | `${IMAP_PASS}` | SMTP password |
+| `SMTP_TLS` | `true` | Use TLS |
+| `SMTP_FROM` | `${IMAP_USER}` | Sender address |
+| `SMTP_SEND_ENABLED` | `false` | **Must be `true` to enable sending** |
+
+### Debug
+
+| Variable | Default | Description |
+|---|---|---|
+| `IMAP_DEBUG` | `false` | Verbose IMAP protocol logging |
+
+## Security
+
+- Email sending is **disabled by default** — set `SMTP_SEND_ENABLED=true` to enable
+- Credentials are loaded lazily (only when a tool is called, not at startup)
+- No credentials are logged
+- Keep credentials in `.env` or a secret manager — never commit them to git
+
+## Supported providers
+
+Tested with: Hostpoint, Gmail (app password), Outlook/Microsoft 365, Yahoo Mail, Fastmail, Dovecot, Postfix.
+
+Works with any standards-compliant IMAP/SMTP server.
+
+## Build from source
+
+```bash
+git clone https://github.com/AIWerk/mcp-server-imap
 cd mcp-server-imap
 npm install
 npm run build
 node dist/server.js
 ```
 
-## Supported providers
+## Contributing
 
-- Hostpoint
-- Gmail (IMAP enabled + app password / OAuth proxy)
-- Outlook / Microsoft 365
-- Yahoo Mail
-- Any standards-compliant IMAP/SMTP server
+Issues and PRs are welcome! Please open an issue first for larger changes.
 
-## Tool reference
+## Changelog
 
-| Tool | Purpose | Key params | Returns |
-|---|---|---|---|
-| `email_list` | List emails from folder | `folder?`, `limit?`, `unreadOnly?` | `[{ uid, from, to, subject, date, flags, snippet }]` |
-| `email_read` | Read one message | `uid`, `folder?`, `format?` | `{ uid, from, to, cc, subject, date, body, attachments[] }` |
-| `email_search` | Search mailbox | `query?`, `from?`, `to?`, `subject?`, `since?`, `before?`, `unread?`, `folder?`, `limit?` | Same as `email_list` |
-| `email_folders` | List folders + counts | none | `[{ name, path, delimiter, specialUse?, messageCount, unseenCount }]` |
-| `email_move` | Move messages | `uids`, `from?`, `to` | `{ moved }` |
-| `email_flag` | Read/star flags | `uids`, `action`, `folder?` | `{ flagged }` |
-| `email_delete` | Move to Trash | `uids`, `folder?` | `{ deleted }` |
-| `email_send` | Send email | `to`, `subject`, `body`, `html?`, `cc?`, `bcc?`, `replyTo?`, `inReplyTo?` | `{ messageId, accepted[] }` |
-| `email_reply` | Reply to a message | `uid`, `folder?`, `body`, `html?`, `cc?`, `replyAll?` | `{ messageId, accepted[] }` |
-| `email_attachment` | List/fetch attachments | `uid`, `folder?`, `filename?`, `index?` | `{ attachments[] }` or `{ filename, contentType, size, content }` |
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-## Configuration reference
+## Related projects
 
-All values are loaded from environment variables.
-
-### IMAP
-
-- `IMAP_HOST` (required)
-- `IMAP_PORT` (default: `993`)
-- `IMAP_USER` (required)
-- `IMAP_PASS` (required)
-- `IMAP_TLS` (default: `true`)
-- `IMAP_TIMEOUT` (default: `30000` ms)
-
-### SMTP
-
-- `SMTP_HOST` (default: `${IMAP_HOST}`)
-- `SMTP_PORT` (default: `465`)
-- `SMTP_USER` (default: `${IMAP_USER}`)
-- `SMTP_PASS` (default: `${IMAP_PASS}`)
-- `SMTP_TLS` (default: `true`)
-- `SMTP_FROM` (default: `${IMAP_USER}`)
-- `SMTP_SEND_ENABLED` (default: `false`) - **must be explicitly set to `true` to enable email sending/replying**. This is a safety gate to prevent AI agents from sending emails without explicit opt-in.
-- `IMAP_DEBUG` (default: `false`) - set to `true` to enable verbose IMAP protocol logging (useful for troubleshooting connection issues)
-
-If neither `SMTP_HOST` nor `IMAP_HOST` is set, `email_send` returns:
-
-- `SMTP not configured`
-
-## Example: mcp-bridge config
-
-```json
-{
-  "mcpServers": {
-    "imap": {
-      "command": "npx",
-      "args": ["-y", "@aiwerk/mcp-server-imap"],
-      "env": {
-        "IMAP_HOST": "${IMAP_HOST}",
-        "IMAP_PORT": "${IMAP_PORT}",
-        "IMAP_USER": "${IMAP_USER}",
-        "IMAP_PASS": "${IMAP_PASS}",
-        "IMAP_TLS": "${IMAP_TLS}",
-        "IMAP_TIMEOUT": "${IMAP_TIMEOUT}",
-        "SMTP_HOST": "${SMTP_HOST}",
-        "SMTP_PORT": "${SMTP_PORT}",
-        "SMTP_USER": "${SMTP_USER}",
-        "SMTP_PASS": "${SMTP_PASS}",
-        "SMTP_TLS": "${SMTP_TLS}",
-        "SMTP_FROM": "${SMTP_FROM}"
-      }
-    }
-  }
-}
-```
-
-## Example: Claude Desktop config
-
-```json
-{
-  "mcpServers": {
-    "imap": {
-      "command": "npx",
-      "args": ["-y", "@aiwerk/mcp-server-imap"],
-      "env": {
-        "IMAP_HOST": "${IMAP_HOST}",
-        "IMAP_USER": "${IMAP_USER}",
-        "IMAP_PASS": "${IMAP_PASS}",
-        "SMTP_HOST": "${SMTP_HOST}",
-        "SMTP_USER": "${SMTP_USER}",
-        "SMTP_PASS": "${SMTP_PASS}"
-      }
-    }
-  }
-}
-```
-
-## Error handling
-
-- Connection failures: `IMAP connection failed: <host>:<port> — check IMAP_HOST, IMAP_USER, IMAP_PASS`
-- Authentication failures: `IMAP authentication failed — check credentials`
-- Timeout-related failures mention `IMAP_TIMEOUT`
-
-## Security note
-
-- Keep credentials in `.env` or secret manager.
-- Never commit credentials to git.
-- This server does not log passwords and only uses credentials to establish IMAP/SMTP sessions.
-
-## Part of the AIWerk MCP ecosystem
-
-- **[@aiwerk/mcp-bridge](https://github.com/AIWerk/mcp-bridge)** — MCP server multiplexer with smart routing, caching, and 15+ built-in server recipes
-- **[@aiwerk/mcp-server-imap](https://github.com/AIWerk/mcp-server-imap)** — this project
-- **[docs.aiwerk.ch](https://docs.aiwerk.ch)** — full documentation
+- [@aiwerk/mcp-bridge](https://github.com/AIWerk/mcp-bridge) — MCP router with 100+ server recipes, smart routing, OAuth2
+- [AIWerk MCP Catalog](https://catalog.aiwerk.ch) — searchable catalog of MCP server recipes
+- [aiwerkmcp.com](https://aiwerkmcp.com) — MCP platform landing page
 
 ## License
 
