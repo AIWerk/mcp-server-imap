@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.9] - 2026-04-20
+
+### Fixed
+- **CLI entry fix** — `isCliEntry` now compares realpath of `import.meta.url` against realpath of `process.argv[1]`. The old `pathToFileURL(argv[1]).href === import.meta.url` check returned false under npm's bin-shim indirection, so `npx @aiwerk/mcp-server-imap` silently exited (code 0, no stdout/stderr) without running `main()`. Discovered via bridge spawn audit — same bug pattern as wise@0.1.0, clawhub@0.1.0, and cal@1.0.1.
+
 ## [1.1.8] - 2026-03-20
 
 ### Fixed (Axel review — 8 findings, 7.8→9.0)

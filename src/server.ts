@@ -2,10 +2,10 @@
 // MCP server that provides email tools via IMAP/SMTP
 
 import * as z from 'zod/v4';
-import { readFileSync } from 'fs';
+import { readFileSync, realpathSync } from 'fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { ImapClient } from './imap-client.js';
 import { SmtpClient } from './smtp-client.js';
 
@@ -355,9 +355,16 @@ async function main() {
   process.on('SIGINT', shutdown);
 }
 
-const isMain = process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false;
+export function isCliEntry(moduleUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false;
+  try {
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argv1);
+  } catch {
+    return false;
+  }
+}
 
-if (isMain) {
+if (isCliEntry(import.meta.url, process.argv[1])) {
   main().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`${message}\n`);
