@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.10] - 2026-04-21
+
+### Docs
+- README: Split install into Hosted (aiwerkmcp.com) and Self-hosted (npx) options. The hosted option lands on `bridge.aiwerk.ch/u/<user-id>/mcp` with zero local setup — credentials AES-256-GCM encrypted via Vault.
+- README: Replaced the stale `catalog.aiwerk.ch` link (sunsetted 2026-04-09) and the `mcp-bridge install imap-email` CLI example (now covered by the hosted flow).
+- README: New "About AIWerk MCP" footer cross-linking sibling servers.
+
+### Package metadata
+- Added `homepage`, `repository`, and `bugs` fields — surfaces on npmjs.com and external catalogs.
+
 ## [1.1.9] - 2026-04-20
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "@aiwerk/mcp-server-imap",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "IMAP/SMTP MCP server for listing, reading, searching and sending email",
   "type": "module",
   "main": "dist/src/server.js",
@@ -20,6 +20,14 @@
   ],
   "author": "AIWerk <kontakt@aiwerk.ch>",
   "license": "MIT",
+  "homepage": "https://aiwerkmcp.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AIWerk/mcp-server-imap.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AIWerk/mcp-server-imap/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.19.1",
     "imapflow": "^1.1.1",

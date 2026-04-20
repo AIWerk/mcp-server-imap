@@ -27,15 +27,27 @@ One server, every mailbox.
 - **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called
 - **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading
 
-## Quick start
+## Install
 
-```bash
-npx @aiwerk/mcp-server-imap
-```
+Two ways to run this server — pick the one that fits.
 
-The server starts immediately and responds to `tools/list`. Credentials are only needed when you call a tool.
+### Option 1 — Hosted (zero setup)
 
-### With credentials (for actual email access)
+No local runtime, no env vars on your machine — credentials are AES-256-GCM encrypted server-side via HashiCorp Vault.
+
+1. Sign up at **[aiwerkmcp.com](https://aiwerkmcp.com)**.
+2. Install **IMAP Email** from the catalog and paste your IMAP/SMTP credentials.
+3. Point your MCP client (Claude.ai, Cursor, Hermes, …) at your hosted endpoint:
+   ```
+   https://bridge.aiwerk.ch/u/<your-user-id>/mcp
+   ```
+   with your Bearer token.
+
+All 10 tools appear immediately. Install other AIWerk recipes from the same bridge.
+
+### Option 2 — Self-hosted (npx)
+
+Run directly — you manage the credentials:
 
 ```bash
 IMAP_HOST="imap.example.com" \
@@ -44,6 +56,8 @@ IMAP_PASS="app-password" \
 SMTP_HOST="smtp.example.com" \
 npx @aiwerk/mcp-server-imap
 ```
+
+The server starts immediately and responds to `tools/list` even without credentials — they're only required when a tool is actually called (lazy credentials).
 
 ## Tools (10)
 
@@ -87,30 +101,9 @@ Add to `claude_desktop_config.json`:
 
 Same config format in the respective MCP settings.
 
-### AIWerk MCP Bridge
+### AIWerk hosted bridge
 
-```bash
-mcp-bridge install imap-email
-```
-
-Or manually in `mcp-bridge.json`:
-
-```json
-{
-  "mcpServers": {
-    "imap": {
-      "command": "npx",
-      "args": ["-y", "@aiwerk/mcp-server-imap"],
-      "env": {
-        "IMAP_HOST": "${IMAP_HOST}",
-        "IMAP_USER": "${IMAP_USER}",
-        "IMAP_PASS": "${IMAP_PASS}",
-        "SMTP_HOST": "${SMTP_HOST}"
-      }
-    }
-  }
-}
-```
+If you want zero-setup, install via [aiwerkmcp.com](https://aiwerkmcp.com) — see [Option 1](#option-1--hosted-zero-setup) above.
 
 ## Environment variables
 
@@ -174,11 +167,17 @@ Issues and PRs are welcome! Please open an issue first for larger changes.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-## Related projects
+## About AIWerk MCP
 
-- [@aiwerk/mcp-bridge](https://github.com/AIWerk/mcp-bridge) — MCP router with 100+ server recipes, smart routing, OAuth2
-- [AIWerk MCP Catalog](https://catalog.aiwerk.ch) — searchable catalog of MCP server recipes
-- [aiwerkmcp.com](https://aiwerkmcp.com) — MCP platform landing page
+Part of the **[AIWerk MCP platform](https://aiwerkmcp.com)** — curated, signed MCP recipes served either as npm packages for self-hosting or through our multi-tenant hosted bridge (`bridge.aiwerk.ch`).
+
+Other AIWerk MCP servers:
+
+- [@aiwerk/mcp-server-cal](https://github.com/AIWerk/mcp-server-cal) — Cal.com scheduling
+- [@aiwerk/mcp-server-wise](https://github.com/AIWerk/mcp-server-wise) — Wise (TransferWise) Personal API, read-only
+- [@aiwerk/mcp-server-clawhub](https://github.com/AIWerk/mcp-server-clawhub) — ClawHub skill catalog
+
+Browse the full catalog (20+ recipes including GitHub, Linear, Notion, Stripe, …) at [aiwerkmcp.com](https://aiwerkmcp.com).
 
 ## License
 
