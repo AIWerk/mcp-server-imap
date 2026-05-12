@@ -27,9 +27,71 @@ One server, every mailbox.
 - **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called
 - **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading
 
+## Ad-hoc one-email CLI
+
+> **Note:** On the AIWerk hosted bridge, the `email_send` and `email_reply` MCP tools are disabled to protect the platform's SMTP reputation. Use any of the three paths below to send email locally.
+
+Need to send a single email from the command line — for example, to deliver a draft your AI agent composed? Use `aiwerk-send-email`:
+
+```bash
+SMTP_HOST=smtp.gmail.com \
+SMTP_PORT=587 \
+SMTP_USER=me@gmail.com \
+SMTP_PASS='app-password' \
+SMTP_FROM='Me <me@gmail.com>' \
+npx -y @aiwerk/mcp-server-imap aiwerk-send-email \
+  --to "alice@example.com" \
+  --subject "Re: invoice" \
+  --body "Got it, will pay Monday."
+```
+
+On success, exits 0 and prints JSON: `{"ok":true,"messageId":"...","envelope":{...}}`
+
+On failure, exits 1 with the error on stderr. Credentials are never printed.
+
+### All CLI arguments
+
+| Argument | Required | Description |
+|---|---|---|
+| `--to` | Yes | Recipient(s), comma-separated |
+| `--subject` | Yes | Subject line |
+| `--body` | One of body/html | Plain-text body |
+| `--html` | One of body/html | HTML body (both → multipart) |
+| `--in-reply-to` | No | `Message-ID` of original message (thread preservation) |
+| `--references` | No | Space-separated reference IDs |
+| `--cc` | No | CC recipients, comma-separated |
+| `--bcc` | No | BCC recipients, comma-separated |
+
+### CLI environment variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `SMTP_HOST` | Yes | — | SMTP server hostname |
+| `SMTP_PORT` | Yes | — | `587` for STARTTLS, `465` for implicit TLS |
+| `SMTP_USER` | Yes | — | SMTP username / email address |
+| `SMTP_PASS` | Yes | — | Password or app-specific password |
+| `SMTP_FROM` | Yes | — | Sender address (`Name <email>` or plain email) |
+| `SMTP_TLS` | No | `false` | `true` for implicit TLS (port 465); `false` for STARTTLS (port 587) |
+
+---
+
 ## Install
 
-Two ways to run this server — pick the one that fits.
+Three ways to get email tools — pick the one that fits.
+
+**1. Quick (single email)** — `aiwerk-send-email` CLI above: no MCP client needed, one command sends one email.
+
+**2. Direct stdio MCP server** — all 10 email tools exposed to your AI agent:
+
+```bash
+npx -y @aiwerk/mcp-server-imap
+```
+
+**3. Local bridge with catalog UX** — install via the AIWerk catalog for a guided setup:
+
+```bash
+npx -y @aiwerk/mcp-bridge install imap-email --catalog bridge.aiwerk.ch
+```
 
 ### Option 1 — Hosted (zero setup)
 

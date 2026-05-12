@@ -1,11 +1,13 @@
 {
   "name": "@aiwerk/mcp-server-imap",
-  "version": "1.1.10",
+  "version": "1.2.0",
   "description": "IMAP/SMTP MCP server for listing, reading, searching and sending email",
   "type": "module",
   "main": "dist/src/server.js",
   "bin": {
-    "mcp-server-imap": "dist/src/server.js"
+    "mcp-server-imap": "dist/src/server.js",
+    "aiwerk-mcp-server-imap": "dist/src/server.js",
+    "aiwerk-send-email": "./bin/aiwerk-send-email.mjs"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -43,6 +45,7 @@
   },
   "files": [
     "dist/",
+    "bin/",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

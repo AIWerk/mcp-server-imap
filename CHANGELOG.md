@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.0] - 2026-05-12
+
+### Added
+- **`aiwerk-send-email` CLI** (`bin/aiwerk-send-email.mjs`) — send a single email via SMTP and exit. Not an MCP server; designed for running locally after an AI agent drafts a message on the AIWerk hosted bridge (where `email_send`/`email_reply` MCP tools are disabled for SMTP reputation protection).
+  - Args: `--to`, `--subject`, `--body`, `--html`, `--in-reply-to`, `--references`, `--cc`, `--bcc`
+  - Env: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TLS`
+  - Exit 0 + JSON `{ok,messageId,envelope}` on success; exit 1 + stderr on SMTP error; exit 2 + stderr on missing args/env
+  - 30-second global timeout; credentials never written to stderr
+- New `bin` entry in `package.json`: `aiwerk-send-email → ./bin/aiwerk-send-email.mjs`
+- New `bin` entry: `aiwerk-mcp-server-imap` alias for the MCP server (consistent with other `@aiwerk/mcp-server-*` naming)
+- 10 new tests covering: missing args, missing env, successful send, auth fail, connection timeout, multipart body, `In-Reply-To` header, credential leak guard
+
+### Docs
+- README: New "Ad-hoc one-email CLI" section (before Install) with usage, all CLI args, and env vars table
+- README: Install section restructured as 3-tier: Quick CLI → Direct stdio MCP server → Local bridge with catalog UX
+
 ## [1.1.10] - 2026-04-21
 
 ### Docs
