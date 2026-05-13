@@ -27,28 +27,28 @@ One server, every mailbox.
 - **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called
 - **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading
 
-## Hosted bridge note — `email_send` and `email_reply` are local-only
+## AIWerk hosted service — `email_send` and `email_reply` are local-only
 
-If you connect to this server through the AIWerk hosted bridge (`bridge.aiwerk.ch`), the two outgoing-mail tools are filtered out of `tools/list` and rejected at `tools/call` with `-32601 "local-only"`:
+If you use this server through the AIWerk hosted service at [aiwerkmcp.com](https://aiwerkmcp.com), the two outgoing-mail tools are not exposed:
 
 - ❌ `email_send`
 - ❌ `email_reply`
 
-The other 8 read-side tools (`email_list`, `email_read`, `email_search`, `email_folders`, `email_flag`, `email_move`, `email_delete`, `email_attachment`) work normally on the hosted bridge.
+The other 8 read-side tools (`email_list`, `email_read`, `email_search`, `email_folders`, `email_flag`, `email_move`, `email_delete`, `email_attachment`) work normally on the hosted service.
 
-**Why?** The hosted bridge runs on a shared VPS. If outgoing mail went out from the bridge IP, that IP would appear in every recipient's `Received:` headers — one bad actor could damage deliverability for every tenant. There is no shared-IP architecture where this works safely.
+**Why?** The hosted service shares an IP across all users. If outgoing mail went out from that shared IP, the IP would appear in every recipient's `Received:` headers — one bad actor could damage deliverability for every user. There is no shared-IP architecture where arbitrary user sends works safely.
 
 **How to send mail then?** Run the server locally, where outgoing mail goes from your own IP and your own provider reputation. Three paths:
 
 1. **Ad-hoc one-email CLI** — see the next section. Zero config, one-shot.
 2. **Direct stdio MCP server** in your client (Cursor, Claude Desktop, OpenClaw) — point your client config at `npx -y @aiwerk/mcp-server-imap` with your `IMAP_*` and `SMTP_*` env vars including `SMTP_SEND_ENABLED=true`.
-3. **Local `@aiwerk/mcp-bridge`** — `npx -y @aiwerk/mcp-bridge install imap-email --catalog bridge.aiwerk.ch`, then point your client at the local bridge endpoint.
+3. **Local `@aiwerk/mcp-bridge`** — `npx -y @aiwerk/mcp-bridge install imap-email --catalog aiwerkmcp.com`, then point your client at the local bridge endpoint.
 
-In all three cases the mail goes from your home / office IP, not from `bridge.aiwerk.ch`.
+In all three cases the mail goes from your home / office IP, not from the hosted service.
 
 ## Ad-hoc one-email CLI
 
-> **Note:** On the AIWerk hosted bridge, the `email_send` and `email_reply` MCP tools are disabled to protect the platform's SMTP reputation. Use any of the three paths below to send email locally.
+> **Note:** On the AIWerk hosted service, the `email_send` and `email_reply` MCP tools are not exposed (the service shares an IP across all users, so allowing arbitrary sends would risk every user's deliverability). Use any of the three paths below to send email locally.
 
 Need to send a single email from the command line — for example, to deliver a draft your AI agent composed? Use `aiwerk-send-email`:
 
@@ -182,7 +182,7 @@ Add to `claude_desktop_config.json`:
 
 Same config format in the respective MCP settings.
 
-### AIWerk hosted bridge
+### AIWerk hosted service
 
 If you want zero-setup, install via [aiwerkmcp.com](https://aiwerkmcp.com) — see [Option 1](#option-1--hosted-zero-setup) above.
 
@@ -250,7 +250,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## About AIWerk MCP
 
-Part of the **[AIWerk MCP platform](https://aiwerkmcp.com)** — curated, signed MCP recipes served either as npm packages for self-hosting or through our multi-tenant hosted bridge (`bridge.aiwerk.ch`).
+Part of the **[AIWerk MCP platform](https://aiwerkmcp.com)** — curated, signed MCP recipes served either as npm packages for self-hosting or through our multi-tenant hosted service at [aiwerkmcp.com](https://aiwerkmcp.com).
 
 Other AIWerk MCP servers:
 
