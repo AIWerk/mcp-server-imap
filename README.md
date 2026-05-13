@@ -27,6 +27,25 @@ One server, every mailbox.
 - **Lazy credentials** — the server starts and exposes its tool list without requiring credentials. Auth is only needed when a tool is actually called
 - **Real MIME parsing** — handles multipart, HTML/text, attachments, reply threading
 
+## Hosted bridge note — `email_send` and `email_reply` are local-only
+
+If you connect to this server through the AIWerk hosted bridge (`bridge.aiwerk.ch`), the two outgoing-mail tools are filtered out of `tools/list` and rejected at `tools/call` with `-32601 "local-only"`:
+
+- ❌ `email_send`
+- ❌ `email_reply`
+
+The other 8 read-side tools (`email_list`, `email_read`, `email_search`, `email_folders`, `email_flag`, `email_move`, `email_delete`, `email_attachment`) work normally on the hosted bridge.
+
+**Why?** The hosted bridge runs on a shared VPS. If outgoing mail went out from the bridge IP, that IP would appear in every recipient's `Received:` headers — one bad actor could damage deliverability for every tenant. There is no shared-IP architecture where this works safely.
+
+**How to send mail then?** Run the server locally, where outgoing mail goes from your own IP and your own provider reputation. Three paths:
+
+1. **Ad-hoc one-email CLI** — see the next section. Zero config, one-shot.
+2. **Direct stdio MCP server** in your client (Cursor, Claude Desktop, OpenClaw) — point your client config at `npx -y @aiwerk/mcp-server-imap` with your `IMAP_*` and `SMTP_*` env vars including `SMTP_SEND_ENABLED=true`.
+3. **Local `@aiwerk/mcp-bridge`** — `npx -y @aiwerk/mcp-bridge install imap-email --catalog bridge.aiwerk.ch`, then point your client at the local bridge endpoint.
+
+In all three cases the mail goes from your home / office IP, not from `bridge.aiwerk.ch`.
+
 ## Ad-hoc one-email CLI
 
 > **Note:** On the AIWerk hosted bridge, the `email_send` and `email_reply` MCP tools are disabled to protect the platform's SMTP reputation. Use any of the three paths below to send email locally.
