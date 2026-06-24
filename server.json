@@ -1,0 +1,66 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.AIWerk/mcp-server-imap",
+  "description": "Email tools for any IMAP/SMTP provider: list, read, search, send, and manage messages.",
+  "version": "1.2.1",
+  "repository": {
+    "url": "https://github.com/AIWerk/mcp-server-imap",
+    "source": "github"
+  },
+  "websiteUrl": "https://aiwerkmcp.com/servers/imap-email/",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@aiwerk/mcp-server-imap",
+      "version": "1.2.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "IMAP_HOST",
+          "description": "IMAP server hostname (e.g. imap.gmail.com).",
+          "isRequired": true,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_USER",
+          "description": "IMAP account username / email address.",
+          "isRequired": true,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_PASS",
+          "description": "IMAP account password or app-specific password.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "SMTP_HOST",
+          "description": "SMTP server hostname, required to send email.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "SMTP_USER",
+          "description": "SMTP account username (defaults to IMAP_USER if unset).",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "SMTP_PASS",
+          "description": "SMTP account password (defaults to IMAP_PASS if unset).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 {
   "name": "@aiwerk/mcp-server-imap",
-  "version": "1.2.0",
+  "mcpName": "io.github.AIWerk/mcp-server-imap",
+  "version": "1.2.1",
   "description": "IMAP/SMTP MCP server for listing, reading, searching and sending email",
   "type": "module",
   "main": "dist/src/server.js",
