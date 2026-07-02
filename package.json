@@ -1,7 +1,7 @@
 {
   "name": "@aiwerk/mcp-server-imap",
   "mcpName": "io.github.AIWerk/mcp-server-imap",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "IMAP/SMTP MCP server for listing, reading, searching and sending email",
   "type": "module",
   "main": "dist/src/server.js",
@@ -32,16 +32,16 @@
     "url": "https://github.com/AIWerk/mcp-server-imap/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.19.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "imapflow": "^1.1.1",
     "mailparser": "^3.9.4",
-    "nodemailer": "^7.0.5",
+    "nodemailer": "^9.0.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/mailparser": "^3.4.6",
     "@types/node": "^25.5.0",
-    "@types/nodemailer": "^7.0.2",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "^5.9.2"
   },
   "files": [

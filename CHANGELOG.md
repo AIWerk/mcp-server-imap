@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.2] - 2026-07-02
+
+### Security
+- **nodemailer `^7.0.5` → `^9.0.3`** — closes six upstream advisories, including SMTP command injection via `envelope.size` (GHSA-c7w3-x93f-qmm8), CRLF injection via transport name (GHSA-vvjj-xcjg-gr5g), CRLF injection in `List-*` header comments (GHSA-268h-hp4c-crq3), `jsonTransport` file/URL access bypass (GHSA-wqvq-jvpq-h66f), improper TLS validation in OAuth2 token fetch (GHSA-r7g4-qg5f-qqm2), and `raw` option file-read/SSRF bypass (GHSA-p6gq-j5cr-w38f). No API changes in our usage surface (`createTransport`/`sendMail`).
+- `@modelcontextprotocol/sdk` `1.27.1` → `1.29.0` and refreshed transitive lockfile resolutions (hono 4.12.27, fast-uri, path-to-regexp, qs, ip-address) — `npm audit`: 0 vulnerabilities.
+- `@types/nodemailer` `^7.0.2` → `^8.0.1` (dev).
+
+## [1.2.1] - 2026-06-22
+
+### Changed
+- Published to the official MCP Registry as `io.github.AIWerk/mcp-server-imap` (`mcpName` field added to `package.json`). No functional changes.
+
 ## [1.2.0] - 2026-05-12
 
 ### Added
